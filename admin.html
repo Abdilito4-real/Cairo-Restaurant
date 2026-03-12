@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cairo · Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="icon-192.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+    :root {
+      --bg:#0e0d0b; --bg2:#141310; --bg3:#1c1a16; --bg4:#232018; --surface:#2a2620;
+      --border:rgba(201,168,76,0.12); --border2:rgba(201,168,76,0.22);
+      --gold:#c9a84c; --gold-l:#e8c96a; --gold-d:#a8883a;
+      --cream:#faf7f0; --text:#e8e0d0; --muted:#8a7f6a; --dim:#554f42;
+      --success:#4a9e5c; --warning:#d4872a; --error:#c94040; --info:#3a7fc1;
+      --sidebar-w:220px; --top-h:56px;
+    }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); height:100%; overflow:hidden; }
+    button { cursor:pointer; font-family:inherit; border:none; background:none; }
+    input,select,textarea { font-family:inherit; background:var(--bg3); border:1px solid var(--border2); border-radius:6px; color:var(--text); padding:.6rem .85rem; font-size:.85rem; outline:none; transition:border-color .2s,box-shadow .2s; width:100%; }
+    input:focus,select:focus,textarea:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(201,168,76,.1); }
+    input::placeholder,textarea::placeholder { color:var(--dim); }
+    select { appearance:none; cursor:pointer; }
+    textarea { resize:vertical; min-height:80px; }
+    label { display:block; font-family:'DM Mono',monospace; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:.35rem; }
+    .fg { display:flex; flex-direction:column; margin-bottom:1rem; }
+    .fr { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .fr3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+    img { display:block; max-width:100%; }
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-thumb { background:var(--surface); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--gold-d); }
+
+    /* ── LOGIN ─────────────────────────────────── */
+    #loginSection { position:fixed; inset:0; z-index:999; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(201,168,76,.07) 0%,transparent 65%),var(--bg); }
+    #loginSection::before { content:''; position:absolute; inset:0; background-image:repeating-linear-gradient(0deg,transparent,transparent 48px,rgba(201,168,76,.02) 48px,rgba(201,168,76,.02) 49px),repeating-linear-gradient(90deg,transparent,transparent 48px,rgba(201,168,76,.02) 48px,rgba(201,168,76,.02) 49px); pointer-events:none; }
+    .login-wrap { position:relative; z-index:1; width:100%; max-width:390px; padding:1rem; animation:fadeUp .4s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+    .login-badge { display:flex; align-items:center; gap:.65rem; justify-content:center; margin-bottom:2rem; }
+    .login-mark { width:46px; height:46px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:1.25rem; font-weight:700; color:#1a1510; }
+    .login-name { font-family:'Playfair Display',serif; font-size:1.35rem; font-weight:700; color:var(--cream); }
+    .login-card { background:var(--bg2); border:1px solid var(--border2); border-radius:14px; padding:2.25rem 2rem; box-shadow:0 24px 64px rgba(0,0,0,.5); }
+    .login-title { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--cream); margin-bottom:.2rem; }
+    .login-sub { font-family:'DM Mono',monospace; font-size:.6rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-bottom:1.75rem; }
+    .login-err { display:none; overflow:hidden; background:rgba(201,64,64,.08); border:1px solid rgba(201,64,64,.3); border-radius:8px; margin-bottom:1.1rem; }
+    .login-err.show { display:block; animation:errSlide .25s ease both; }
+    @keyframes errSlide { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+    .login-err-inner { display:flex; align-items:flex-start; gap:.65rem; padding:.75rem .9rem; }
+    .login-err-icon { width:16px; height:16px; flex-shrink:0; margin-top:1px; color:#e08080; }
+    .login-err-icon svg { width:100%; height:100%; }
+    .login-err-body { flex:1; }
+    .login-err-title { font-size:.78rem; font-weight:600; color:#e08080; margin-bottom:.2rem; }
+    .login-err-msg { font-size:.73rem; color:#b07070; line-height:1.5; }
+    .login-err-hint { font-size:.68rem; color:var(--dim); margin-top:.35rem; padding-top:.35rem; border-top:1px solid rgba(201,64,64,.15); }
+    .login-net-status { display:none; align-items:center; gap:.5rem; padding:.5rem .75rem; border-radius:6px; margin-bottom:1rem; font-size:.72rem; font-family:'DM Mono',monospace; animation:errSlide .25s ease both; }
+    .login-net-status.warn { display:flex; background:rgba(212,135,42,.1); border:1px solid rgba(212,135,42,.25); color:#e8a840; }
+    .login-net-status svg { width:13px; height:13px; flex-shrink:0; }
+    .input-shake { animation:shake .4s ease; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+    .input-error { border-color:rgba(201,64,64,.6)!important; box-shadow:0 0 0 3px rgba(201,64,64,.1)!important; }
+    .btn-login { width:100%; padding:.82rem; border-radius:8px; font-weight:600; font-size:.88rem; letter-spacing:.04em; margin-top:.25rem; transition:background .2s,transform .15s,box-shadow .2s; position:relative; overflow:hidden; background:var(--gold); color:#1a1510; border:none; }
+    .btn-login:hover:not(:disabled) { background:var(--gold-l); transform:translateY(-1px); box-shadow:0 4px 16px rgba(201,168,76,.3); }
+    .btn-login:disabled { cursor:not-allowed; }
+    .btn-login.loading { background:var(--gold-d); color:rgba(26,21,16,.6); }
+    .btn-login.success-state { background:var(--success); color:white; }
+    .btn-login-inner { display:flex; align-items:center; justify-content:center; gap:.6rem; }
+    .btn-login-spinner { width:15px; height:15px; border-radius:50%; border:2px solid rgba(26,21,16,.2); border-top-color:rgba(26,21,16,.7); animation:spin .65s linear infinite; display:none; flex-shrink:0; }
+    .btn-login.loading .btn-login-spinner { display:block; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .login-progress { height:2px; background:rgba(201,168,76,.15); border-radius:0 0 8px 8px; overflow:hidden; margin-top:-2px; opacity:0; transition:opacity .2s; }
+    .login-progress.active { opacity:1; }
+    .login-progress-bar { height:100%; width:0%; background:var(--gold); transition:width .4s ease; border-radius:2px; }
+    .login-progress-bar.indeterminate { width:40%; animation:progressSlide 1.2s ease-in-out infinite; }
+    @keyframes progressSlide { 0%{transform:translateX(-100%)} 100%{transform:translateX(300%)} }
+    .login-retry-msg { text-align:center; font-size:.72rem; color:var(--dim); margin-top:.75rem; min-height:1.1em; }
+
+    /* ── APP SHELL ──────────────────────────────── */
+    #appShell { display:none; height:100vh; overflow:hidden; }
+    #appShell.show { display:grid; grid-template-columns:var(--sidebar-w) 1fr; grid-template-rows:var(--top-h) 1fr; }
+
+    /* ── TOPBAR ─────────────────────────────────── */
+    .topbar { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; padding:0 1.5rem 0 0; background:var(--bg2); border-bottom:1px solid var(--border); z-index:50; }
+    .topbar-left { display:flex; align-items:center; height:100%; padding:0 1.25rem; border-right:1px solid var(--border); gap:.75rem; width:var(--sidebar-w); }
+    .topbar-logo { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:1rem; color:#1a1510; font-weight:700; flex-shrink:0; }
+    .topbar-brand { font-family:'Playfair Display',serif; font-size:.95rem; color:var(--cream); line-height:1.1; }
+    .topbar-brand span { display:block; font-family:'DM Mono',monospace; font-size:.5rem; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
+    .topbar-right { display:flex; align-items:center; gap:.75rem; }
+    .topbar-title { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--cream); flex:1; padding-left:1.5rem; }
+    .live-pill { display:flex; align-items:center; gap:.45rem; padding:.3rem .8rem; background:var(--bg3); border:1px solid var(--border); border-radius:20px; font-family:'DM Mono',monospace; font-size:.6rem; letter-spacing:.06em; color:var(--muted); }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:var(--success); animation:pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .btn-logout { display:flex; align-items:center; gap:.4rem; padding:.32rem .8rem; border:1px solid rgba(201,64,64,.22); border-radius:6px; color:#b08080; font-size:.7rem; font-family:'DM Mono',monospace; letter-spacing:.06em; text-transform:uppercase; transition:background .2s,color .2s; }
+    .btn-logout:hover { background:rgba(201,64,64,.1); color:#e09090; }
+    .btn-logout svg { width:12px; height:12px; }
+
+    /* ── SIDEBAR ────────────────────────────────── */
+    .sidebar { grid-row:2; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; padding:1rem 0; }
+    .nav-section { font-family:'DM Mono',monospace; font-size:.54rem; letter-spacing:.2em; text-transform:uppercase; color:var(--dim); padding:.7rem 1rem .3rem; }
+    .nav-btn { display:flex; align-items:center; gap:.65rem; width:100%; padding:.58rem 1rem; color:var(--muted); font-size:.8rem; font-family:'Inter',sans-serif; font-weight:500; text-align:left; transition:color .15s,background .15s; position:relative; }
+    .nav-btn svg { width:15px; height:15px; flex-shrink:0; }
+    .nav-btn:hover { background:var(--bg3); color:var(--text); }
+    .nav-btn.active { color:var(--gold); background:rgba(201,168,76,.07); }
+    .nav-btn.active::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--gold); border-radius:0 3px 3px 0; }
+    .nav-badge { margin-left:auto; background:var(--error); color:#fff; border-radius:10px; padding:1px 6px; font-size:.58rem; font-weight:700; font-family:'DM Mono',monospace; min-width:18px; text-align:center; }
+    .nav-badge.gold { background:var(--gold); color:#1a1510; }
+
+    /* ── MAIN ───────────────────────────────────── */
+    .main { grid-row:2; overflow-y:auto; background:var(--bg); }
+    .main-inner { padding:1.5rem; max-width:1400px; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; animation:fadeIn .2s ease; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    /* ── STATS ──────────────────────────────────── */
+    .stats-row { display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:1.5rem; }
+    .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:1.1rem 1.25rem; position:relative; overflow:hidden; cursor:default; transition:border-color .2s; }
+    .stat-card:hover { border-color:var(--border2); }
+    .stat-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--gold),transparent); }
+    .stat-label { font-family:'DM Mono',monospace; font-size:.57rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:.4rem; }
+    .stat-val { font-family:'Playfair Display',serif; font-size:1.85rem; font-weight:700; color:var(--cream); line-height:1; transition:color .3s; }
+    @keyframes statFlash { 0%{color:var(--gold-l);transform:scale(1.08)} 60%{color:var(--gold)} 100%{color:var(--cream);transform:scale(1)} }
+    .stat-flash { animation:statFlash .55s ease both; }
+    .stat-sub { font-size:.67rem; color:var(--dim); margin-top:.25rem; }
+    .stat-delta { font-size:.65rem; margin-top:.3rem; }
+    .stat-delta.up { color:var(--success); }
+    .stat-delta.down { color:var(--error); }
+
+    /* ── PANEL ──────────────────────────────────── */
+    .panel { background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:1.25rem; }
+    .panel-head { display:flex; align-items:center; justify-content:space-between; padding:.85rem 1.25rem; border-bottom:1px solid var(--border); gap:.75rem; flex-wrap:wrap; }
+    .panel-title { font-family:'Playfair Display',serif; font-size:.98rem; color:var(--cream); }
+    .panel-head-right { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+    .panel-body { padding:1.25rem; }
+    .panel-body.np { padding:0; }
+
+    /* ── BUTTONS ────────────────────────────────── */
+    .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.48rem 1rem; border-radius:7px; font-size:.78rem; font-weight:500; transition:background .15s,transform .1s; font-family:'Inter',sans-serif; white-space:nowrap; }
+    .btn svg { width:13px; height:13px; flex-shrink:0; }
+    .btn-gold { background:var(--gold); color:#1a1510; border:none; }
+    .btn-gold:hover { background:var(--gold-l); transform:translateY(-1px); }
+    .btn-sm { padding:.32rem .7rem; font-size:.72rem; border-radius:5px; }
+    .btn-ghost { background:transparent; border:1px solid var(--border2); color:var(--muted); }
+    .btn-ghost:hover { border-color:var(--gold-d); color:var(--text); }
+    .btn-accept { background:rgba(74,158,92,.12); color:#7ec898; border:1px solid rgba(74,158,92,.25); }
+    .btn-accept:hover { background:rgba(74,158,92,.25); }
+    .btn-ready { background:rgba(201,168,76,.12); color:var(--gold-l); border:1px solid rgba(201,168,76,.28); }
+    .btn-ready:hover { background:rgba(201,168,76,.25); }
+    .btn-complete { background:rgba(58,127,193,.1); color:#80b4e0; border:1px solid rgba(58,127,193,.22); }
+    .btn-complete:hover { background:rgba(58,127,193,.22); }
+    .btn-danger { background:rgba(201,64,64,.1); color:#e09090; border:1px solid rgba(201,64,64,.22); }
+    .btn-danger:hover { background:rgba(201,64,64,.2); }
+
+    /* ── BADGES ─────────────────────────────────── */
+    .badge { display:inline-flex; align-items:center; gap:.28rem; padding:.16rem .58rem; border-radius:20px; font-family:'DM Mono',monospace; font-size:.57rem; letter-spacing:.06em; text-transform:uppercase; font-weight:600; white-space:nowrap; }
+    .badge::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0; }
+    .badge-pending   { background:rgba(212,135,42,.12); color:#e8a840; border:1px solid rgba(212,135,42,.22); }
+    .badge-accepted  { background:rgba(74,158,92,.12); color:#7ec898; border:1px solid rgba(74,158,92,.22); }
+    .badge-ready     { background:rgba(201,168,76,.12); color:var(--gold); border:1px solid rgba(201,168,76,.22); }
+    .badge-complete, .badge-completed { background:rgba(100,100,100,.1); color:var(--muted); border:1px solid rgba(100,100,100,.18); }
+    .badge-cancelled { background:rgba(201,64,64,.1); color:#e09090; border:1px solid rgba(201,64,64,.2); }
+    .badge-confirmed { background:rgba(74,158,92,.12); color:#7ec898; border:1px solid rgba(74,158,92,.22); }
+    .badge-no_show   { background:rgba(120,60,60,.12); color:#c49090; border:1px solid rgba(120,60,60,.2); }
+
+    /* ── ORDER CARDS ────────────────────────────── */
+    .orders-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:1rem; }
+    .order-card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow .2s; }
+    .order-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.3); }
+    .order-card.pending  { border-top:3px solid var(--warning); }
+    .order-card.accepted { border-top:3px solid var(--success); }
+    .order-card.ready    { border-top:3px solid var(--gold); }
+    .order-card-head { display:flex; align-items:center; justify-content:space-between; padding:.7rem 1rem; border-bottom:1px solid var(--border); }
+    .order-table { font-family:'Playfair Display',serif; font-size:1rem; color:var(--cream); font-weight:700; }
+    .order-time { font-family:'DM Mono',monospace; font-size:.6rem; color:var(--dim); }
+    .order-body { padding:.85rem 1rem; flex:1; }
+    .order-guest { font-size:.73rem; color:var(--muted); margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem; }
+    .order-list { list-style:none; display:flex; flex-direction:column; gap:.22rem; }
+    .order-list li { display:flex; justify-content:space-between; font-size:.78rem; }
+    .order-list li span:last-child { color:var(--muted); white-space:nowrap; }
+    .order-notes { margin-top:.55rem; padding:.45rem .6rem; background:rgba(201,168,76,.06); border-radius:5px; font-size:.72rem; color:var(--gold); font-style:italic; border-left:2px solid rgba(201,168,76,.25); }
+    .order-total-row { display:flex; justify-content:space-between; align-items:center; margin-top:.7rem; padding-top:.55rem; border-top:1px solid var(--border); }
+    .order-total { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--gold); font-weight:700; }
+    .order-foot { padding:.6rem .75rem; border-top:1px solid var(--border); display:flex; gap:.4rem; }
+    .order-foot .btn { flex:1; justify-content:center; font-size:.7rem; padding:.38rem .5rem; }
+
+    /* ── TABLE ──────────────────────────────────── */
+    .tbl-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    thead th { padding:.62rem 1rem; background:var(--bg3); border-bottom:1px solid var(--border); font-family:'DM Mono',monospace; font-size:.57rem; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); text-align:left; white-space:nowrap; }
+    tbody td { padding:.72rem 1rem; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; }
+    tbody tr:last-child td { border-bottom:none; }
+    tbody tr:hover td { background:rgba(201,168,76,.025); cursor:pointer; }
+    .td-id { font-family:'DM Mono',monospace; font-size:.63rem; color:var(--dim); }
+    .td-name strong { color:var(--cream); display:block; font-size:.85rem; }
+    .td-name small { font-size:.7rem; color:var(--dim); }
+    .td-mono { font-family:'DM Mono',monospace; font-size:.72rem; }
+    .td-price { font-family:'Playfair Display',serif; color:var(--gold); }
+    .td-actions { display:flex; gap:.3rem; }
+    .icon-btn { width:27px; height:27px; border-radius:5px; display:flex; align-items:center; justify-content:center; border:1px solid var(--border); background:var(--bg3); color:var(--muted); transition:all .15s; }
+    .icon-btn:hover { border-color:var(--gold-d); color:var(--gold); }
+    .icon-btn.del:hover { border-color:var(--error); color:#e09090; }
+    .icon-btn svg { width:12px; height:12px; }
+
+    /* ── MANAGE GRID ────────────────────────────── */
+    .manage-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; }
+    .manage-card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; overflow:hidden; transition:border-color .2s; }
+    .manage-card:hover { border-color:var(--border2); }
+    .manage-card-img { width:100%; aspect-ratio:16/9; object-fit:cover; background:var(--bg4); }
+    .manage-card-body { padding:.8rem; }
+    .manage-card-name { font-family:'Playfair Display',serif; font-size:.92rem; color:var(--cream); font-weight:700; margin-bottom:.18rem; }
+    .manage-card-price { color:var(--gold); font-family:'DM Mono',monospace; font-size:.73rem; }
+    .manage-card-cat { color:var(--dim); font-family:'DM Mono',monospace; font-size:.58rem; margin-top:.12rem; }
+    .manage-card-foot { padding:.6rem .8rem; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .avail-label { font-size:.68rem; color:var(--muted); display:flex; align-items:center; gap:.4rem; }
+    .item-flags { display:flex; gap:.3rem; flex-wrap:wrap; margin-top:.35rem; }
+    .item-flag { font-size:.55rem; font-family:'DM Mono',monospace; padding:.1rem .4rem; border-radius:3px; background:var(--bg4); border:1px solid var(--border); color:var(--dim); }
+    .item-flag.on { background:rgba(201,168,76,.1); border-color:rgba(201,168,76,.25); color:var(--gold); }
+
+    /* ── TOGGLE ─────────────────────────────────── */
+    .toggle { position:relative; width:33px; height:18px; display:inline-block; flex-shrink:0; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .toggle-track { position:absolute; inset:0; background:var(--surface); border:1px solid var(--border2); border-radius:18px; cursor:pointer; transition:background .2s,border-color .2s; }
+    .toggle-track::before { content:''; position:absolute; width:12px; height:12px; border-radius:50%; left:2px; top:2px; background:var(--dim); transition:transform .2s,background .2s; }
+    .toggle input:checked + .toggle-track { background:var(--gold); border-color:var(--gold-d); }
+    .toggle input:checked + .toggle-track::before { transform:translateX(15px); background:#1a1510; }
+
+    /* ── MODAL ──────────────────────────────────── */
+    .modal-bg { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.72); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; padding:1.5rem; opacity:0; pointer-events:none; transition:opacity .2s; }
+    .modal-bg.show { opacity:1; pointer-events:all; }
+    .modal { background:var(--bg2); border:1px solid var(--border2); border-radius:14px; width:100%; max-width:520px; transform:translateY(14px); transition:transform .2s; max-height:92vh; overflow-y:auto; }
+    .modal.wide { max-width:680px; }
+    .modal-bg.show .modal { transform:translateY(0); }
+    .modal-head { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg2); z-index:1; }
+    .modal-title { font-family:'Playfair Display',serif; font-size:1.08rem; color:var(--cream); }
+    .modal-x { width:28px; height:28px; border-radius:50%; background:var(--bg3); color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:1rem; transition:background .15s; }
+    .modal-x:hover { background:var(--surface); color:var(--text); }
+    .modal-body { padding:1.5rem; }
+    .modal-foot { padding:1rem 1.5rem 1.5rem; display:flex; gap:.75rem; }
+    .modal-foot .btn { flex:1; justify-content:center; padding:.7rem; }
+    .check-row { display:flex; gap:1.25rem; flex-wrap:wrap; margin-top:.5rem; }
+    .check-label { display:flex; align-items:center; gap:.45rem; font-size:.75rem; color:var(--text); cursor:pointer; font-family:'Inter',sans-serif; text-transform:none; letter-spacing:0; }
+    .check-label input[type=checkbox] { width:auto; padding:0; background:transparent; border:none; cursor:pointer; accent-color:var(--gold); }
+
+    /* ── ORDER DETAIL MODAL ─────────────────────── */
+    .order-detail-section { margin-bottom:1.25rem; }
+    .order-detail-label { font-family:'DM Mono',monospace; font-size:.58rem; letter-spacing:.15em; text-transform:uppercase; color:var(--dim); margin-bottom:.5rem; }
+    .order-detail-items { list-style:none; }
+    .order-detail-items li { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid var(--border); font-size:.85rem; }
+    .order-detail-items li:last-child { border-bottom:none; }
+    .order-detail-total { display:flex; justify-content:space-between; align-items:center; padding:.75rem 0 0; margin-top:.25rem; border-top:1px solid var(--border2); }
+    .order-detail-total span:first-child { font-family:'DM Mono',monospace; font-size:.72rem; color:var(--muted); }
+    .order-detail-total span:last-child { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--gold); font-weight:700; }
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem 1.5rem; }
+    .detail-field label { font-family:'DM Mono',monospace; font-size:.57rem; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); display:block; margin-bottom:.2rem; }
+    .detail-field span { font-size:.85rem; color:var(--text); }
+    .status-flow { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-top:.5rem; }
+    .status-step { display:flex; align-items:center; gap:.4rem; font-size:.72rem; font-family:'DM Mono',monospace; }
+    .status-step .dot { width:8px; height:8px; border-radius:50%; background:var(--dim); flex-shrink:0; }
+    .status-step.done .dot { background:var(--success); }
+    .status-step.active .dot { background:var(--gold); box-shadow:0 0 6px rgba(201,168,76,.5); }
+    .status-arrow { color:var(--dim); font-size:.7rem; }
+
+    /* ── ANALYTICS ──────────────────────────────── */
+    .analytics-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem; }
+    .analytics-grid.full { grid-template-columns:1fr; }
+    .chart-panel { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:1.25rem; }
+    .chart-title { font-family:'Playfair Display',serif; font-size:.95rem; color:var(--cream); margin-bottom:1rem; }
+    .bar-chart { display:flex; flex-direction:column; gap:.55rem; }
+    .bar-row { display:grid; grid-template-columns:90px 1fr 60px; align-items:center; gap:.75rem; }
+    .bar-label { font-family:'DM Mono',monospace; font-size:.65rem; color:var(--muted); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .bar-track { height:8px; background:var(--bg4); border-radius:4px; overflow:hidden; }
+    .bar-fill { height:100%; border-radius:4px; background:var(--gold); transition:width .6s ease; }
+    .bar-fill.accent { background:var(--info); }
+    .bar-val { font-family:'DM Mono',monospace; font-size:.65rem; color:var(--text); text-align:right; }
+    .donut-wrap { display:flex; align-items:center; gap:1.5rem; }
+    .donut-legend { display:flex; flex-direction:column; gap:.5rem; flex:1; }
+    .donut-item { display:flex; align-items:center; gap:.6rem; font-size:.75rem; }
+    .donut-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .donut-name { color:var(--muted); flex:1; }
+    .donut-pct { font-family:'DM Mono',monospace; font-size:.7rem; color:var(--text); }
+    svg.donut { flex-shrink:0; transform:rotate(-90deg); }
+    .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.25rem; }
+    .kpi-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center; }
+    .kpi-val { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--cream); font-weight:700; }
+    .kpi-label { font-family:'DM Mono',monospace; font-size:.57rem; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); margin-top:.3rem; }
+    .activity-list { display:flex; flex-direction:column; gap:0; }
+    .activity-item { display:flex; align-items:flex-start; gap:.85rem; padding:.75rem 0; border-bottom:1px solid var(--border); }
+    .activity-item:last-child { border-bottom:none; }
+    .activity-icon { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.8rem; }
+    .activity-icon.order { background:rgba(201,168,76,.12); }
+    .activity-icon.res { background:rgba(58,127,193,.12); }
+    .activity-icon.cancel { background:rgba(201,64,64,.1); }
+    .activity-text { flex:1; font-size:.8rem; color:var(--text); line-height:1.4; }
+    .activity-text small { color:var(--dim); font-size:.68rem; font-family:'DM Mono',monospace; }
+    .activity-amt { font-family:'Playfair Display',serif; color:var(--gold); font-size:.88rem; white-space:nowrap; }
+
+    /* ── TOAST ──────────────────────────────────── */
+    #toastWrap { position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; max-width:300px; pointer-events:none; }
+    .toast { display:flex; align-items:flex-start; gap:.65rem; padding:.75rem .9rem; background:var(--bg2); border:1px solid var(--border2); border-radius:10px; font-size:.78rem; box-shadow:0 8px 24px rgba(0,0,0,.45); animation:slideIn .3s ease both; position:relative; overflow:hidden; pointer-events:all; }
+    @keyframes slideIn { from{transform:translateX(110%);opacity:0} to{transform:translateX(0);opacity:1} }
+    .toast.out { animation:slideIn .25s ease reverse both; }
+    .toast-icon { width:15px; height:15px; flex-shrink:0; margin-top:1px; }
+    .toast-icon svg { width:100%; height:100%; }
+    .toast-msg { flex:1; color:var(--text); line-height:1.4; }
+    .toast-x { color:var(--dim); font-size:.9rem; }
+    .toast-x:hover { color:var(--text); }
+    .toast-bar { position:absolute; bottom:0; left:0; height:2px; width:100%; animation:shrink linear forwards; }
+    @keyframes shrink { from{width:100%} to{width:0%} }
+    .toast.success .toast-icon { color:var(--success); } .toast.success .toast-bar { background:var(--success); }
+    .toast.error   .toast-icon { color:var(--error); }   .toast.error   .toast-bar { background:var(--error); }
+    .toast.warning .toast-icon { color:var(--warning); } .toast.warning .toast-bar { background:var(--warning); }
+    .toast.info    .toast-icon { color:var(--info); }    .toast.info    .toast-bar { background:var(--info); }
+
+    /* ── MISC ───────────────────────────────────── */
+    .spinner { width:30px; height:30px; border-radius:50%; border:2px solid var(--border2); border-top-color:var(--gold); animation:spin .7s linear infinite; margin:2.5rem auto; }
+    .empty { text-align:center; padding:3rem 2rem; color:var(--dim); }
+    .empty svg { width:38px; height:38px; margin:0 auto .65rem; opacity:.28; }
+    .empty p { font-size:.8rem; }
+    .chip { display:inline-block; padding:.15rem .55rem; background:var(--bg4); border:1px solid var(--border); border-radius:4px; font-family:'DM Mono',monospace; font-size:.6rem; color:var(--muted); }
+    .img-preview { width:100%; aspect-ratio:16/9; border-radius:7px; object-fit:cover; background:var(--bg4); border:1px solid var(--border); margin-top:.5rem; display:none; }
+    .img-preview.show { display:block; }
+    .divider { height:1px; background:var(--border); margin:1rem 0; }
+    .search-input { padding:.32rem .7rem; font-size:.75rem; width:160px; }
+    .select-sm { padding:.32rem .7rem; font-size:.72rem; width:auto; background:var(--bg3); border:1px solid var(--border2); border-radius:5px; color:var(--muted); }
+
+    @media (max-width:900px) {
+      :root { --sidebar-w:0px; }
+      .sidebar { display:none; }
+      #appShell.show { grid-template-columns:1fr; }
+      .topbar-left { display:none; }
+      .stats-row { grid-template-columns:repeat(2,1fr); }
+      .analytics-grid { grid-template-columns:1fr; }
+      .kpi-row { grid-template-columns:repeat(2,1fr); }
+      .fr { grid-template-columns:1fr; }
+      .fr3 { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ──────────────────────────────────────── -->
+<div id="loginSection">
+  <div class="login-wrap">
+    <div class="login-badge">
+      <div class="login-mark">C</div>
+      <div class="login-name">Cairo</div>
+    </div>
+    <div class="login-card">
+      <h1 class="login-title">Admin Portal</h1>
+      <p class="login-sub">Staff access only</p>
+      <div class="login-net-status" id="loginNetWarn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.56 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+        Cannot reach server — check your internet connection
+      </div>
+      <div class="login-err" id="loginErr">
+        <div class="login-err-inner">
+          <span class="login-err-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+          <div class="login-err-body">
+            <div class="login-err-title" id="loginErrTitle">Sign-in failed</div>
+            <div class="login-err-msg" id="loginErrMsg"></div>
+            <div class="login-err-hint" id="loginErrHint" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+      <form id="loginForm" onsubmit="return false;">
+        <div class="fg"><label>Email address</label><input type="email" id="loginEmail" placeholder="admin@cairozaria.com" required autocomplete="email"></div>
+        <div class="fg" style="margin-bottom:1.5rem;"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" required autocomplete="current-password"></div>
+        <button type="submit" id="loginBtn" class="btn-login">
+          <span class="btn-login-inner"><span class="btn-login-spinner"></span><span class="btn-login-text">Sign In</span></span>
+        </button>
+        <div class="login-progress" id="loginProgress"><div class="login-progress-bar" id="loginProgressBar"></div></div>
+        <div class="login-retry-msg" id="loginRetryMsg"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP SHELL ──────────────────────────────────── -->
+<div id="appShell">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">C</div>
+      <div class="topbar-brand">Cairo<span>Restaurant · Admin</span></div>
+    </div>
+    <div class="topbar-title" id="pageTitle">Overview</div>
+    <div class="topbar-right">
+      <div class="live-pill"><span class="live-dot"></span><span id="liveStatus">Live</span></div>
+      <button class="btn-logout" id="logoutBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="nav-section">Overview</div>
+    <button class="nav-btn active" data-tab="overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Overview
+    </button>
+    <button class="nav-btn" data-tab="analytics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Analytics
+    </button>
+    <div class="nav-section">Operations</div>
+    <button class="nav-btn" data-tab="orders">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+      Orders
+      <span class="nav-badge" id="ordersBadge" style="display:none">0</span>
+    </button>
+    <button class="nav-btn" data-tab="reservations">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Reservations
+      <span class="nav-badge" id="resBadge" style="display:none">0</span>
+    </button>
+    <div class="nav-section">Management</div>
+    <button class="nav-btn" data-tab="menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      Menu Items
+    </button>
+    <button class="nav-btn" data-tab="categories">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+      Categories
+    </button>
+    <button class="nav-btn" data-tab="gallery">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Gallery
+    </button>
+  </aside>
+
+  <main class="main">
+    <div class="main-inner">
+
+      <!-- ── OVERVIEW TAB ─────────────────────── -->
+      <div class="tab-panel active" id="tab-overview">
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">Live Orders</div><div class="stat-val" id="statLive">—</div><div class="stat-sub">Active right now</div></div>
+          <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-val" id="statPending">—</div><div class="stat-sub">Awaiting action</div></div>
+          <div class="stat-card"><div class="stat-label">Today's Revenue</div><div class="stat-val" id="statRevenue">—</div><div class="stat-sub">Completed orders</div></div>
+          <div class="stat-card"><div class="stat-label">Reservations Today</div><div class="stat-val" id="statRes">—</div><div class="stat-sub">Confirmed + pending</div></div>
+          <div class="stat-card"><div class="stat-label">Menu Items</div><div class="stat-val" id="statItems">—</div><div class="stat-sub" id="statAvail">— available</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;">
+          <!-- Live orders summary -->
+          <div class="panel">
+            <div class="panel-head">
+              <h2 class="panel-title">Live Orders</h2>
+              <div class="panel-head-right">
+                <span id="liveCountChip" class="chip">0 active</span>
+                <button class="btn btn-ghost btn-sm" onclick="Admin.loadOrders()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>Refresh
+                </button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="orders-grid" id="liveOrdersGrid"><div class="spinner"></div></div>
+            </div>
+          </div>
+
+          <!-- Activity feed -->
+          <div class="panel">
+            <div class="panel-head"><h2 class="panel-title">Recent Activity</h2></div>
+            <div class="panel-body np">
+              <div style="padding:0 1.25rem;" id="activityFeed">
+                <div class="spinner"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming reservations today -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Today's Reservations</h2>
+            <button class="btn btn-ghost btn-sm" onclick="Admin.renderTab('reservations')">View all</button>
+          </div>
+          <div class="panel-body np">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Guest</th><th>Time</th><th>Party</th><th>Occasion</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="todayResTbody"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--dim);">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ANALYTICS TAB ────────────────────── -->
+      <div class="tab-panel" id="tab-analytics">
+        <div class="kpi-row" id="kpiRow">
+          <div class="kpi-card"><div class="kpi-val" id="kpiTotal">—</div><div class="kpi-label">Total Orders</div></div>
+          <div class="kpi-card"><div class="kpi-val" id="kpiRevenue">—</div><div class="kpi-label">Total Revenue</div></div>
+          <div class="kpi-card"><div class="kpi-val" id="kpiAvgOrder">—</div><div class="kpi-label">Avg Order Value</div></div>
+          <div class="kpi-card"><div class="kpi-val" id="kpiCompletion">—</div><div class="kpi-label">Completion Rate</div></div>
+        </div>
+        <div class="analytics-grid">
+          <div class="chart-panel">
+            <div class="chart-title">Revenue — Last 7 Days</div>
+            <div class="bar-chart" id="revenueChart"><div class="spinner"></div></div>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-title">Orders by Status</div>
+            <div class="donut-wrap" id="statusChart"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div class="analytics-grid">
+          <div class="chart-panel">
+            <div class="chart-title">Top Menu Items (by order count)</div>
+            <div class="bar-chart" id="topItemsChart"><div class="spinner"></div></div>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-title">Orders by Category</div>
+            <div class="bar-chart" id="catChart"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div class="analytics-grid">
+          <div class="chart-panel">
+            <div class="chart-title">Reservations — Last 7 Days</div>
+            <div class="bar-chart" id="resChart"><div class="spinner"></div></div>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-title">Reservation Status Breakdown</div>
+            <div class="donut-wrap" id="resStatusChart"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ORDERS TAB ────────────────────────── -->
+      <div class="tab-panel" id="tab-orders">
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Live Orders</h2>
+            <div class="panel-head-right">
+              <span id="liveCountChip2" class="chip">0 active</span>
+              <button class="btn btn-ghost btn-sm" onclick="Admin.loadOrders()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>Refresh
+              </button>
+            </div>
+          </div>
+          <div class="panel-body"><div class="orders-grid" id="liveOrdersGrid2"><div class="spinner"></div></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Order History</h2>
+            <div class="panel-head-right">
+              <input class="search-input" id="histSearch" placeholder="Search orders…" oninput="Admin.renderHistory()">
+              <select class="select-sm" id="histFilter" onchange="Admin.renderHistory()">
+                <option value="all">All</option><option value="complete">Completed</option><option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-body np">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>Table / Guest</th><th>Items</th><th>Total</th><th>Status</th><th>Date & Time</th></tr></thead>
+                <tbody id="historyTbody"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--dim);">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RESERVATIONS TAB ──────────────────── -->
+      <div class="tab-panel" id="tab-reservations">
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">All Reservations</h2>
+            <div class="panel-head-right">
+              <input class="search-input" id="resSearch" placeholder="Search…" oninput="Admin.renderReservations()">
+              <select class="select-sm" id="resFilter" onchange="Admin.renderReservations()">
+                <option value="all">All</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="Admin.loadReservations()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>Refresh
+              </button>
+            </div>
+          </div>
+          <div class="panel-body np">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Ref</th><th>Guest</th><th>Date</th><th>Time</th><th>Party</th><th>Occasion</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="resTbody"><tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--dim);">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MENU TAB ──────────────────────────── -->
+      <div class="tab-panel" id="tab-menu">
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Menu Items</h2>
+            <div class="panel-head-right">
+              <input class="search-input" id="menuSearch" placeholder="Search…" oninput="Admin.renderMenu()">
+              <select class="select-sm" id="menuCatFilter" onchange="Admin.renderMenu()">
+                <option value="all">All categories</option>
+              </select>
+              <select class="select-sm" id="menuAvailFilter" onchange="Admin.renderMenu()">
+                <option value="all">All</option><option value="available">Available</option><option value="hidden">Hidden</option>
+              </select>
+              <button class="btn btn-gold btn-sm" onclick="openItemModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Item
+              </button>
+            </div>
+          </div>
+          <div class="panel-body"><div class="manage-grid" id="menuManageGrid"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
+      <!-- ── CATEGORIES TAB ────────────────────── -->
+      <div class="tab-panel" id="tab-categories">
+        <div class="fr" style="align-items:start;">
+          <div class="panel">
+            <div class="panel-head"><h2 class="panel-title">Add Category</h2></div>
+            <div class="panel-body">
+              <div class="fr">
+                <div class="fg"><label>Name *</label><input type="text" id="catName" placeholder="e.g. Grills"></div>
+                <div class="fg"><label>Emoji</label><input type="text" id="catEmoji" placeholder="🍖" maxlength="4" style="font-size:1.1rem;"></div>
+              </div>
+              <div class="fg"><label>Description</label><input type="text" id="catDesc" placeholder="Short description…"></div>
+              <button class="btn btn-gold" onclick="addCategory()">Add Category</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2 class="panel-title">All Categories</h2></div>
+            <div class="panel-body np">
+              <div class="tbl-wrap">
+                <table>
+                  <thead><tr><th>Emoji</th><th>Name</th><th>Description</th><th>Items</th><th>Actions</th></tr></thead>
+                  <tbody id="catTbody"><tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--dim);">Loading…</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── GALLERY TAB ───────────────────────── -->
+      <div class="tab-panel" id="tab-gallery">
+        <div class="panel" style="margin-bottom:1.25rem;">
+          <div class="panel-head"><h2 class="panel-title">Add Gallery Image</h2></div>
+          <div class="panel-body">
+            <div class="fr">
+              <div class="fg">
+                <label>Image URL *</label>
+                <input type="url" id="galleryUrl" placeholder="https://…" oninput="previewGallery()">
+                <img id="galleryPreview" class="img-preview" alt="preview" onerror="this.classList.remove('show')">
+              </div>
+              <div>
+                <div class="fg"><label>Caption</label><input type="text" id="galleryCaption" placeholder="e.g. The Main Hall"></div>
+                <div class="fg"><label>Category</label>
+                  <select id="galleryCat">
+                    <option value="general">General</option><option value="food">Food</option>
+                    <option value="interior">Interior</option><option value="drinks">Drinks</option><option value="events">Events</option>
+                  </select>
+                </div>
+                <button class="btn btn-gold" style="width:100%;" onclick="addGalleryImage()">Add to Gallery</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2 class="panel-title">Gallery Images</h2><span id="galleryCount" class="chip">0 images</span></div>
+          <div class="panel-body"><div class="manage-grid" id="galleryGrid"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
+    </div><!-- /main-inner -->
+  </main>
+</div><!-- /appShell -->
+
+<!-- ── ITEM MODAL ──────────────────────────────────── -->
+<div class="modal-bg" id="itemModal">
+  <div class="modal">
+    <div class="modal-head"><h2 class="modal-title" id="itemModalTitle">Add Menu Item</h2><button class="modal-x" onclick="closeItemModal()">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+      <div class="fr">
+        <div class="fg"><label>Name *</label><input type="text" id="editName" placeholder="e.g. Grilled Tilapia"></div>
+        <div class="fg"><label>Price (₦) *</label><input type="number" id="editPrice" placeholder="4500" min="0" step="50"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Category</label><select id="editCat"><option value="">— None —</option></select></div>
+        <div class="fg"><label>Emoji</label><input type="text" id="editEmoji" placeholder="🍽️" maxlength="4" style="font-size:1.1rem;"></div>
+      </div>
+      <div class="fg"><label>Description</label><textarea id="editDesc" placeholder="Describe the dish…"></textarea></div>
+      <div class="fg">
+        <label>Image URL</label>
+        <input type="url" id="editImage" placeholder="https://…" oninput="previewEditImg()">
+        <img id="editImgPreview" class="img-preview" alt="preview" onerror="this.classList.remove('show')">
+      </div>
+      <div class="check-row">
+        <label class="check-label"><input type="checkbox" id="editPopular"> Popular</label>
+        <label class="check-label"><input type="checkbox" id="editNew"> New</label>
+        <label class="check-label"><input type="checkbox" id="editHalal" checked> Halal</label>
+        <label class="check-label"><input type="checkbox" id="editAvailable" checked> Available</label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeItemModal()">Cancel</button>
+      <button class="btn btn-gold" onclick="saveMenuItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ORDER DETAIL MODAL ──────────────────────────── -->
+<div class="modal-bg" id="orderModal">
+  <div class="modal wide">
+    <div class="modal-head"><h2 class="modal-title" id="orderModalTitle">Order Details</h2><button class="modal-x" onclick="closeModal('orderModal')">×</button></div>
+    <div class="modal-body" id="orderModalBody"></div>
+    <div class="modal-foot" id="orderModalFoot"></div>
+  </div>
+</div>
+
+<!-- ── RESERVATION DETAIL MODAL ────────────────────── -->
+<div class="modal-bg" id="resModal">
+  <div class="modal wide">
+    <div class="modal-head"><h2 class="modal-title" id="resModalTitle">Reservation Details</h2><button class="modal-x" onclick="closeModal('resModal')">×</button></div>
+    <div class="modal-body" id="resModalBody"></div>
+    <div class="modal-foot" id="resModalFoot"></div>
+  </div>
+</div>
+
+<div id="toastWrap"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="supabase.js?v=3"></script>
+<script src="admin.js?v=3"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "name": "Cairo Restaurant",
+  "short_name": "Cairo",
+  "description": "Upscale halal dining in Zaria. Browse the menu, order online, and book a table at Cairo Restaurant.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#faf7f0",
+  "theme_color": "#c9a84c",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "categories": ["food", "lifestyle", "shopping"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "View Menu",
+      "short_name": "Menu",
+      "description": "Browse our full menu and place an order",
+      "url": "/menu.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Reserve a Table",
+      "short_name": "Reserve",
+      "description": "Book a table at Cairo Restaurant",
+      "url": "/reservations.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
