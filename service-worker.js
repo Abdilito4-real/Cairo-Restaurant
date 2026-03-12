@@ -58,6 +58,7 @@ self.addEventListener('push', e => {
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       tag: data.tag || 'cairo-notification',
+      requireInteraction: true,
       data: data
     })
   );
@@ -69,5 +70,24 @@ self.addEventListener('notificationclick', e => {
 });
 
 self.addEventListener('message', e => {
-  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (!e.data) return;
+  if (e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+  if (e.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, tag } = e.data;
+    self.registration.showNotification(title || 'Cairo Restaurant', {
+      body: body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: tag || 'cairo-order',
+      requireInteraction: true,
+      vibrate: [200, 100, 200],
+      actions: [
+        { action: 'view', title: 'View Order' },
+        { action: 'dismiss', title: 'Dismiss' }
+      ]
+    });
+  }
 });
