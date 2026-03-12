@@ -65,6 +65,109 @@ function openModal(id)  { $(id)?.classList.add('show'); }
 function closeModal(id) { $(id)?.classList.remove('show'); }
 
 // ── AUTH ──────────────────────────────────────────────
+// ── NOTIFICATIONS ─────────────────────────────────────
+const Notifs = {
+  get enabled() { return localStorage.getItem('cairo-notifs') === 'on'; },
+  set enabled(v) { localStorage.setItem('cairo-notifs', v ? 'on' : 'off'); },
+
+  // Plays a soft ding using Web Audio API — no file needed
+  playDing() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const times = [[0, 880], [0.18, 1100], [0.36, 660]];
+      times.forEach(([when, freq]) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + when);
+        gain.gain.setValueAtTime(0.28, ctx.currentTime + when);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + when + 0.7);
+        osc.start(ctx.currentTime + when);
+        osc.stop(ctx.currentTime + when + 0.7);
+      });
+    } catch(_) {}
+  },
+
+  // Fire notification — works in foreground AND background via SW
+  async fire(title, body, tag='cairo-order') {
+    if (!this.enabled) return;
+    this.playDing();
+    // Try service worker notification first (works when tab is backgrounded)
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SHOW_NOTIFICATION', title, body, tag
+      });
+      return;
+    }
+    // Fallback: direct browser notification (tab must be open)
+    if (Notification?.permission === 'granted') {
+      new Notification(title, {
+        body, icon: '/icon-192.png', badge: '/icon-192.png', tag,
+        requireInteraction: true
+      });
+    }
+  },
+
+  async toggle() {
+    if (Notification?.permission === 'denied') {
+      toast('Notifications blocked. Enable them in browser settings → Site Settings.', 'warning', 6000);
+      return;
+    }
+    if (this.enabled) {
+      this.enabled = false;
+      this.updateBtn();
+      toast('Notifications off', 'info');
+      return;
+    }
+    // Request permission
+    const perm = await Notification.requestPermission().catch(() => 'denied');
+    if (perm === 'granted') {
+      this.enabled = true;
+      this.updateBtn();
+      toast('🔔 Notifications enabled — you\'ll be alerted on new orders!', 'success', 5000);
+    } else {
+      toast('Permission denied. Allow notifications in your browser settings.', 'warning', 6000);
+      this.updateBtn();
+    }
+  },
+
+  updateBtn() {
+    const btn    = $('notifBtn');
+    const label  = $('notifLabel');
+    const badge  = $('notifBadge');
+    const icon   = $('notifIcon');
+    if (!btn) return;
+    const perm = Notification?.permission;
+    if (perm === 'denied') {
+      btn.className = 'notif-btn denied';
+      label.textContent = 'Blocked';
+      badge.style.display = 'none';
+      icon.innerHTML = `<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+      return;
+    }
+    if (this.enabled && perm === 'granted') {
+      btn.className = 'notif-btn active';
+      label.textContent = 'Notify On';
+      badge.style.display = 'block';
+      icon.innerHTML = `<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>`;
+    } else {
+      btn.className = 'notif-btn';
+      label.textContent = 'Notify';
+      badge.style.display = 'none';
+      icon.innerHTML = `<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>`;
+    }
+  },
+
+  init() {
+    this.updateBtn();
+    // If already granted + enabled, restore active state silently
+    if (Notification?.permission === 'granted' && this.enabled) {
+      // Good — already active
+    }
+  }
+};
+
 const Auth = {
   async init() {
     const { data:{session} } = await supabaseClient.auth.getSession();
@@ -272,14 +375,14 @@ const Admin = {
           this.loadOrders();
           if (payload.eventType==='INSERT') {
             toast('🔔 New order received!','success');
-            if (Notification?.permission==='granted')
-              new Notification('Cairo Restaurant',{body:'New order received!',icon:'/icon-192.png'});
+            Notifs.fire('🍽️ New Order — Cairo Restaurant', 'A new order just came in. Tap to view.', 'cairo-order');
           }
         })
         .on('postgres_changes',{event:'*',schema:'public',table:'reservations'}, payload=>{
           this.loadReservations();
           if (payload.eventType==='INSERT') {
             toast('📅 New reservation!','info');
+            Notifs.fire('📅 New Reservation — Cairo Restaurant', 'A table has been booked. Tap to review.', 'cairo-reservation');
           }
         })
         .subscribe(status=>{
@@ -1071,8 +1174,7 @@ async function addCategory() {
 
 // ── LOGIN LOGIC ────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  if (typeof Notification!=='undefined'&&Notification.permission==='default')
-    Notification.requestPermission().catch(()=>{});
+  Notifs.init();
 
   // login helpers
   const loginBtn=$('loginBtn'), loginProgress=$('loginProgress'),
