@@ -492,63 +492,260 @@ async function submitOrder() {
   }
 }
 
+// ── TRIVIA DATA ────────────────────────────────────────────────
+const _triviaBank = [
+  { q:'Which city is Cairo Restaurant located in?',           a:0, opts:['Zaria','Kano','Abuja','Lagos'] },
+  { q:'Which Nigerian city is suya originally from?',         a:0, opts:['Zaria / Kaduna','Lagos','Enugu','Port Harcourt'] },
+  { q:'What is the main ingredient in egusi soup?',           a:1, opts:['Groundnuts','Melon seeds','Pumpkin seeds','Sesame'] },
+  { q:'Jollof rice is traditionally cooked in which base?',   a:0, opts:['Tomato stew','Palm oil','Groundnut oil','Coconut milk'] },
+  { q:'Which spice blend is essential for suya?',             a:1, opts:['Ras el hanout','Yaji (kuli-kuli)','Za\'atar','Berbere'] },
+  { q:'Kilishi is the dried version of which food?',          a:0, opts:['Suya','Bole','Asun','Nkwobi'] },
+  { q:'What gives Nigerian fried rice its colour?',           a:2, opts:['Saffron','Curry only','Turmeric & curry','Food dye'] },
+  { q:'Zobo drink is made from which plant?',                 a:0, opts:['Roselle / Hibiscus','Jasmine','Lavender','Rose'] },
+  { q:'Tuwo shinkafa is made from which grain?',              a:1, opts:['Yam','Rice','Cassava','Maize'] },
+  { q:'What does "halal" mean in Arabic?',                    a:1, opts:['Blessed','Permissible','Pure','Fresh'] },
+  { q:'Akara is made primarily from which ingredient?',       a:0, opts:['Black-eyed peas','Lentils','Chickpeas','Millet'] },
+  { q:'Puff-puff is most similar to which western food?',     a:0, opts:['Doughnuts','Churros','Beignets','Waffles'] },
+  { q:'Which state in Nigeria is known for miyan taushe?',    a:1, opts:['Kaduna','Kano','Borno','Sokoto'] },
+  { q:'Dan wake is made from which flour?',                   a:0, opts:['Bean flour','Rice flour','Corn flour','Wheat flour'] },
+  { q:'Fura da nono is a drink popular in which region?',     a:0, opts:['Northern Nigeria','Southern Nigeria','Eastern Nigeria','Western Nigeria'] },
+];
+let _triviaScore = 0;
+let _triviaTotal = 0;
+
 function showOrderSuccess(order, items, total) {
   document.getElementById('cartPanel')?.classList.remove('open');
   document.getElementById('cartOverlay')?.classList.remove('active');
-
-  // Store receipt data on window so printReceipt() can access it safely
   window._lastReceipt = { order, items, total };
+  document.getElementById('successModal')?.remove();
+
+  // Reset trivia state for this session
+  _triviaScore = 0;
+  _triviaTotal = 0;
+
+  // Upsells — popular items not in this order
+  const orderedIds = new Set(items.map(i => i.id));
+  const upsells = allMenuItems
+    .filter(m => !orderedIds.has(m.id) && m.available !== false)
+    .sort((a,b) => (b.is_popular?1:0)-(a.is_popular?1:0))
+    .slice(0,3);
+
+  // Wait time estimate
+  const qty      = items.reduce((s,i) => s+i.quantity, 0);
+  const waitMins = Math.max(10, Math.min(35, 8 + qty * 2));
+
+  // Trivia pick
+  const trivia = _triviaBank[Math.floor(Math.random()*_triviaBank.length)];
+
+  const upsellsHtml = upsells.length ? `
+    <div class="poe-section">
+      <div class="poe-section-title">🍽️ You Might Also Like</div>
+      <div class="poe-upsells">
+        ${upsells.map(m=>`
+          <div class="poe-upsell-card" id="upsell-${m.id}">
+            ${m.image_url
+              ? `<img src="${m.image_url}" class="poe-upsell-img" onerror="this.style.display='none'" loading="lazy">`
+              : `<div class="poe-upsell-emoji">${m.emoji||'🍽️'}</div>`}
+            <div class="poe-upsell-body">
+              <div class="poe-upsell-name">${m.name}</div>
+              <div class="poe-upsell-price">₦${Number(m.price||0).toLocaleString()}</div>
+            </div>
+            <button class="poe-upsell-btn" onclick="poeAddUpsell('${m.id}')">+ Add</button>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
 
   const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay active';
   overlay.id = 'successModal';
-
-  const itemsHtml = items.map(i => `
-    <div class="order-summary-item">
-      <span>${i.quantity}× ${i.name}${i.variantName ? ` (${i.variantName})` : ''}</span>
-      <span>₦${(i.price * i.quantity).toLocaleString()}</span>
-    </div>`).join('');
+  overlay.className = 'poe-overlay';
 
   overlay.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-body" style="text-align:center; padding-top:2.5rem;">
-        <div style="width:64px;height:64px;border-radius:50%;background:rgba(74,158,92,0.1);border:2px solid var(--success);
-          display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;animation:successPop 0.4s cubic-bezier(.18,.89,.32,1.28) both;">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--success)" stroke-width="2.5">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </div>
-        <h3 style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--cream);margin-bottom:0.4rem;">Order Placed!</h3>
-        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1.5rem;">
-          Table <strong>${order.table_number}</strong> — your order is heading to the kitchen.
-        </p>
-        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:left;margin-bottom:0.5rem;">
-          ${itemsHtml}
-          <div class="order-summary-total">
-            <span>Total</span>
-            <span>₦${total.toLocaleString()}</span>
+    <div class="poe-sheet">
+
+      <!-- HEADER -->
+      <div class="poe-header">
+        <div class="poe-check"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h2 class="poe-title">Order Placed! 🎉</h2>
+        <p class="poe-ref">Table <strong>${order.table_number||'—'}</strong> &nbsp;·&nbsp; Ref <strong>#${order.id.slice(0,8).toUpperCase()}</strong></p>
+      </div>
+
+      <div class="poe-body">
+
+        <!-- 1. LIVE TRACKER + WAIT TIMER -->
+        <div class="poe-section">
+          <div class="poe-section-title">📡 Live Order Status</div>
+          <div class="poe-tracker" id="poeTracker">
+            <div class="poe-step done"  id="poe-s0"><div class="poe-step-dot"></div><div class="poe-step-lbl">Received</div></div>
+            <div class="poe-step-line"></div>
+            <div class="poe-step active" id="poe-s1"><div class="poe-step-dot"></div><div class="poe-step-lbl">Kitchen</div></div>
+            <div class="poe-step-line"></div>
+            <div class="poe-step" id="poe-s2"><div class="poe-step-dot"></div><div class="poe-step-lbl">Preparing</div></div>
+            <div class="poe-step-line"></div>
+            <div class="poe-step" id="poe-s3"><div class="poe-step-dot"></div><div class="poe-step-lbl">Ready! ✅</div></div>
+          </div>
+          <div class="poe-wait-box">
+            <div class="poe-wait-text">
+              <div class="poe-wait-label">Estimated wait</div>
+              <div class="poe-wait-mins" id="poeCountdown">${waitMins}:00</div>
+            </div>
+            <svg class="poe-ring" viewBox="0 0 56 56">
+              <circle class="poe-ring-bg" cx="28" cy="28" r="22"/>
+              <circle class="poe-ring-prog" id="poeRing" cx="28" cy="28" r="22"
+                stroke-dasharray="138.2" stroke-dashoffset="0"/>
+            </svg>
           </div>
         </div>
-        <p style="font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.1em;color:var(--text-dim);margin-top:0.5rem;">
-          Order ref: ${order.id.slice(0, 8).toUpperCase()}
-        </p>
-      </div>
-      <div class="modal-actions">
-        <button id="printReceiptBtn" style="flex:1;padding:0.75rem;background:transparent;border:1px solid var(--gold-dark);color:var(--gold);border-radius:var(--radius);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-          Print Receipt
-        </button>
-        <button class="btn-gold" style="flex:1" onclick="document.getElementById('successModal').remove()">Done</button>
-      </div>
-    </div>`;
+
+        <!-- 2. ORDER SUMMARY -->
+        <div class="poe-section">
+          <div class="poe-section-title">🧾 Your Order</div>
+          <div class="poe-order-list">
+            ${items.map(i=>`
+              <div class="poe-order-row">
+                <span class="poe-qty">${i.quantity}×</span>
+                <span class="poe-item-name">${i.name}${i.variantName?` <em>(${i.variantName})</em>`:''}</span>
+                <span class="poe-item-price">₦${(i.price*i.quantity).toLocaleString()}</span>
+              </div>`).join('')}
+            <div class="poe-total-row"><span>Total</span><span>₦${total.toLocaleString()}</span></div>
+          </div>
+        </div>
+
+        <!-- 3. UPSELLS -->
+        ${upsellsHtml}
+
+        <!-- 4. TRIVIA -->
+        <div class="poe-section">
+          <div class="poe-section-title">🎯 Food Trivia — Play While You Wait!</div>
+          <div class="poe-trivia" id="poeTrivia">
+            <div class="poe-trivia-score" id="poeTriviaScore">Score: 0 / 0</div>
+            <div class="poe-trivia-q" id="poeTriviaQ">${trivia.q}</div>
+            <div class="poe-trivia-opts" id="poeTriviaOpts">
+              ${trivia.opts.map((o,i)=>`<button class="poe-opt" onclick="poeTriviaAnswer(${i},${trivia.a})">${o}</button>`).join('')}
+            </div>
+            <div class="poe-trivia-result" id="poeTriviaResult"></div>
+            <button class="poe-trivia-next" id="poeTriviaNext" style="display:none" onclick="poeNextTrivia()">Next Question →</button>
+          </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="poe-actions">
+          <button class="poe-btn-outline" id="poeReceiptBtn">🖨️ Print Receipt</button>
+          <button class="poe-btn-close" onclick="document.getElementById('successModal').remove()">Close</button>
+        </div>
+
+      </div><!-- /poe-body -->
+    </div><!-- /poe-sheet -->
+  `;
 
   document.body.appendChild(overlay);
 
-  // Attach click handler directly — no data through HTML attributes
-  document.getElementById('printReceiptBtn').addEventListener('click', () => {
+  // Print handler
+  document.getElementById('poeReceiptBtn').addEventListener('click', () => {
     const r = window._lastReceipt;
     if (r) printReceipt(r.order, r.items, r.total);
   });
+
+  // ── COUNTDOWN ─────────────────────────────────────────
+  let secsLeft = waitMins * 60;
+  const totalSecs = secsLeft;
+  const circumference = 138.2;
+  const ringEl = document.getElementById('poeRing');
+  const cdEl   = document.getElementById('poeCountdown');
+
+  const ticker = setInterval(() => {
+    if (!document.getElementById('successModal')) { clearInterval(ticker); return; }
+    secsLeft = Math.max(0, secsLeft - 1);
+    const m = Math.floor(secsLeft/60), s = secsLeft%60;
+    if (cdEl) cdEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
+    if (ringEl) ringEl.style.strokeDashoffset = String(circumference * (secsLeft / totalSecs));
+    if (secsLeft === 0) clearInterval(ticker);
+  }, 1000);
+
+  // ── LIVE STATUS POLL ───────────────────────────────────
+  const orderId  = order.id;
+  let lastStatus = 'pending';
+  const stepMap  = { pending:1, accepted:2, ready:3, complete:3 };
+
+  const poller = setInterval(async () => {
+    if (!document.getElementById('successModal')) { clearInterval(poller); return; }
+    try {
+      const { data } = await supabaseClient.from('orders').select('status').eq('id',orderId).single();
+      if (!data || data.status === lastStatus) return;
+      lastStatus = data.status;
+      const activeStep = stepMap[data.status] ?? 1;
+      for (let i = 0; i <= 3; i++) {
+        const el = document.getElementById(`poe-s${i}`);
+        if (!el) continue;
+        el.className = 'poe-step' + (i < activeStep ? ' done' : i === activeStep ? ' active' : '');
+      }
+      // Flash tracker to show update
+      const tracker = document.getElementById('poeTracker');
+      if (tracker) {
+        tracker.style.transition = 'none';
+        tracker.style.background = 'rgba(201,168,76,0.08)';
+        setTimeout(() => { tracker.style.background = ''; }, 600);
+      }
+      if (data.status === 'ready') {
+        cdEl && (cdEl.textContent = 'Ready!');
+        cdEl && (cdEl.style.color = '#4ade80');
+        if (ringEl) ringEl.style.stroke = '#4ade80';
+        clearInterval(ticker);
+        const waitBox = document.querySelector('.poe-wait-box');
+        if (waitBox) {
+          waitBox.innerHTML = '<div class="poe-ready-banner">🍽️ Your food is ready! Please collect it.</div>';
+        }
+      }
+    } catch(_) {}
+  }, 8000);
+}
+
+// ── TRIVIA LOGIC ──────────────────────────────────────────────
+function poeTriviaAnswer(chosen, correct) {
+  document.querySelectorAll('.poe-opt').forEach((btn, i) => {
+    btn.disabled = true;
+    btn.classList.toggle('poe-opt-correct', i === correct);
+    btn.classList.toggle('poe-opt-wrong', i === chosen && chosen !== correct);
+  });
+  _triviaTotal++;
+  if (chosen === correct) _triviaScore++;
+  const res  = document.getElementById('poeTriviaResult');
+  const next = document.getElementById('poeTriviaNext');
+  const scEl = document.getElementById('poeTriviaScore');
+  if (scEl) scEl.textContent = `Score: ${_triviaScore} / ${_triviaTotal}`;
+  if (res) {
+    res.className = 'poe-trivia-result ' + (chosen === correct ? 'correct' : 'wrong');
+    res.textContent = chosen === correct
+      ? '✓ Correct! Great knowledge! 🎉'
+      : `✗ Not quite — the answer was "${document.querySelectorAll('.poe-opt')[correct]?.textContent}"`;
+  }
+  if (next) next.style.display = 'inline-flex';
+}
+
+function poeNextTrivia() {
+  const pick  = _triviaBank[Math.floor(Math.random() * _triviaBank.length)];
+  const qEl   = document.getElementById('poeTriviaQ');
+  const optsEl= document.getElementById('poeTriviaOpts');
+  const resEl = document.getElementById('poeTriviaResult');
+  const nextEl= document.getElementById('poeTriviaNext');
+  if (!qEl) return;
+  qEl.textContent = pick.q;
+  optsEl.innerHTML = pick.opts.map((o,i) =>
+    `<button class="poe-opt" onclick="poeTriviaAnswer(${i},${pick.a})">${o}</button>`
+  ).join('');
+  if (resEl) { resEl.textContent = ''; resEl.className = 'poe-trivia-result'; }
+  if (nextEl) nextEl.style.display = 'none';
+}
+
+function poeAddUpsell(itemId) {
+  const item = allMenuItems.find(m => m.id === itemId);
+  if (!item) return;
+  addToCart(item, null, null);
+  const card = document.getElementById(`upsell-${itemId}`);
+  if (card) {
+    card.classList.add('poe-upsell-added');
+    const btn = card.querySelector('.poe-upsell-btn');
+    if (btn) { btn.textContent = '✓ Added'; btn.disabled = true; }
+  }
 }
 
 // ── PRINT RECEIPT ─────────────────────────────────────────────
