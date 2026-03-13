@@ -1505,3 +1505,754 @@ footer {
 
 /* ── CHECKOUT BTN SPINNER ───────────────────────────────── */
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════════════════
+   POST-ORDER EXPERIENCE (POE) — Order Tracker, Upsells, Trivia
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── OVERLAY ──────────────────────────────────────────────── */
+.poe-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(10,9,8,0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0;
+  animation: poeOverlayIn 0.35s ease both;
+}
+@keyframes poeOverlayIn { from { opacity:0 } to { opacity:1 } }
+
+/* ── SHEET ────────────────────────────────────────────────── */
+.poe-sheet {
+  width: 100%; max-width: 540px;
+  max-height: 95vh;
+  background: var(--cream-dark, #f0ebe0);
+  border-radius: 24px 24px 0 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  animation: poeSheetUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,168,76,0.3) transparent;
+}
+@keyframes poeSheetUp {
+  from { transform: translateY(100%); opacity: 0.6; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.poe-sheet::-webkit-scrollbar { width: 4px; }
+.poe-sheet::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.3); border-radius: 2px; }
+
+/* ── HEADER ───────────────────────────────────────────────── */
+.poe-header {
+  background: linear-gradient(135deg, #1a1510 0%, #2c2418 50%, #1a1510 100%);
+  padding: 2rem 1.5rem 1.75rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.poe-header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+.poe-check {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: linear-gradient(135deg, #c9a84c, #a8883a);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem;
+  box-shadow: 0 0 0 8px rgba(201,168,76,0.15), 0 8px 24px rgba(201,168,76,0.3);
+  animation: checkPop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;
+}
+@keyframes checkPop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.poe-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem; font-weight: 700;
+  color: #faf7f0;
+  margin-bottom: 0.4rem;
+  position: relative;
+}
+.poe-ref {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem; letter-spacing: 0.12em;
+  color: rgba(201,168,76,0.85);
+  position: relative;
+}
+.poe-ref strong { color: #e8c96a; }
+
+/* ── BODY ─────────────────────────────────────────────────── */
+.poe-body { padding: 0 1.25rem 2rem; background: var(--cream, #faf7f0); }
+
+/* ── SECTION ──────────────────────────────────────────────── */
+.poe-section {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid rgba(201,168,76,0.15);
+}
+.poe-section:last-of-type { border-bottom: none; }
+.poe-section-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: #a8883a;
+  margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+
+/* ── LIVE ORDER TRACKER ───────────────────────────────────── */
+.poe-tracker {
+  display: flex; align-items: center;
+  padding: 1rem 0.5rem 0.75rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  transition: background 0.5s ease;
+}
+.poe-step {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.4rem; flex: 0 0 auto;
+}
+.poe-step-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #d4c8a8;
+  border: 2px solid #c0b490;
+  transition: all 0.4s ease;
+  position: relative;
+}
+.poe-step.done .poe-step-dot {
+  background: #c9a84c;
+  border-color: #a8883a;
+  box-shadow: 0 0 0 4px rgba(201,168,76,0.2);
+}
+.poe-step.done .poe-step-dot::after {
+  content: '';
+  position: absolute; inset: 2px;
+  border-radius: 50%;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 10 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='2,5 4,7 8,3' stroke='%23fff' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+.poe-step.active .poe-step-dot {
+  background: #fff;
+  border-color: #c9a84c;
+  box-shadow: 0 0 0 5px rgba(201,168,76,0.25), 0 0 12px rgba(201,168,76,0.4);
+  animation: poeStepPulse 1.5s ease-in-out infinite;
+}
+@keyframes poeStepPulse {
+  0%,100% { box-shadow: 0 0 0 5px rgba(201,168,76,0.25), 0 0 12px rgba(201,168,76,0.3); }
+  50%     { box-shadow: 0 0 0 8px rgba(201,168,76,0.15), 0 0 20px rgba(201,168,76,0.5); }
+}
+.poe-step-lbl {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem; letter-spacing: 0.06em;
+  color: #8a7a5a; text-align: center; white-space: nowrap;
+}
+.poe-step.done  .poe-step-lbl { color: #a8883a; font-weight: 600; }
+.poe-step.active .poe-step-lbl { color: #c9a84c; font-weight: 700; }
+
+.poe-step-line {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, #d4c8a8, #d4c8a8);
+  margin: 0 4px;
+  margin-bottom: 18px;
+  border-radius: 1px;
+  transition: background 0.4s ease;
+  min-width: 20px;
+}
+.poe-step-line.filled {
+  background: linear-gradient(90deg, #c9a84c, #e8c96a);
+}
+
+/* ── WAIT BOX ─────────────────────────────────────────────── */
+.poe-wait-box {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #fdf8ed, #f5eedb);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  gap: 1rem;
+}
+.poe-wait-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #8a7a5a; margin-bottom: 0.3rem;
+}
+.poe-wait-mins {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem; font-weight: 700;
+  color: #1a1510; line-height: 1;
+}
+.poe-wait-sub {
+  font-size: 0.7rem; color: #8a7a5a; margin-top: 0.25rem;
+}
+
+/* SVG countdown ring */
+.poe-ring { width: 56px; height: 56px; flex-shrink: 0; transform: rotate(-90deg); }
+.poe-ring-bg  { fill: none; stroke: rgba(201,168,76,0.15); stroke-width: 4; }
+.poe-ring-prog {
+  fill: none; stroke: #c9a84c; stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+/* ── ORDER SUMMARY ────────────────────────────────────────── */
+.poe-order-list {
+  background: #fff;
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.poe-order-row {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  font-size: 0.84rem; color: #2c2418;
+}
+.poe-order-row:last-of-type { border-bottom: none; }
+.poe-qty {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem; color: #a8883a;
+  min-width: 24px; flex-shrink: 0;
+}
+.poe-item-name { flex: 1; color: #1a1510; }
+.poe-item-name em { font-style: italic; color: #8a7a5a; font-size: 0.78rem; }
+.poe-item-price {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem; color: #5a4a2a; white-space: nowrap;
+}
+.poe-total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #fdf8ed, #f5eedb);
+  border-top: 2px solid rgba(201,168,76,0.25);
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem; font-weight: 700;
+  color: #1a1510;
+}
+.poe-total-row span:last-child { color: #a8883a; }
+
+/* ── UPSELLS ──────────────────────────────────────────────── */
+.poe-upsells {
+  display: flex; flex-direction: column; gap: 0.65rem;
+}
+.poe-upsell-card {
+  display: flex; align-items: center; gap: 0.85rem;
+  background: #fff;
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+}
+.poe-upsell-card:hover { border-color: rgba(201,168,76,0.5); box-shadow: 0 4px 12px rgba(201,168,76,0.12); }
+.poe-upsell-card.poe-upsell-added { border-color: #4ade80; background: #f0fdf4; }
+.poe-upsell-img {
+  width: 52px; height: 52px; border-radius: 8px;
+  object-fit: cover; flex-shrink: 0;
+  background: #f5eedb;
+}
+.poe-upsell-emoji {
+  width: 52px; height: 52px; border-radius: 8px;
+  background: linear-gradient(135deg, #fdf8ed, #f5eedb);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem; flex-shrink: 0;
+}
+.poe-upsell-body { flex: 1; min-width: 0; }
+.poe-upsell-name {
+  font-size: 0.85rem; font-weight: 600; color: #1a1510;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.poe-upsell-price {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem; color: #a8883a; margin-top: 0.15rem;
+}
+.poe-upsell-btn {
+  flex-shrink: 0;
+  padding: 0.38rem 0.85rem;
+  background: linear-gradient(135deg, #c9a84c, #a8883a);
+  color: #1a1510; border: none; border-radius: 20px;
+  font-size: 0.72rem; font-weight: 700;
+  font-family: 'DM Mono', monospace; letter-spacing: 0.04em;
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.poe-upsell-btn:hover:not(:disabled) { background: linear-gradient(135deg, #e8c96a, #c9a84c); transform: scale(1.05); }
+.poe-upsell-btn:disabled { background: #4ade80; color: #166534; cursor: default; }
+
+/* ── TRIVIA ───────────────────────────────────────────────── */
+.poe-trivia {
+  background: linear-gradient(135deg, #1a1510, #2c2418);
+  border-radius: 16px; padding: 1.25rem;
+  border: 1px solid rgba(201,168,76,0.2);
+  position: relative; overflow: hidden;
+}
+.poe-trivia::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+.poe-trivia-score {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(201,168,76,0.7);
+  margin-bottom: 0.85rem;
+  position: relative;
+}
+.poe-trivia-q {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem; font-weight: 700;
+  color: #faf7f0; line-height: 1.45;
+  margin-bottom: 1rem;
+  position: relative;
+}
+.poe-trivia-opts {
+  display: flex; flex-direction: column; gap: 0.5rem;
+  position: relative;
+}
+.poe-opt {
+  width: 100%; text-align: left;
+  padding: 0.65rem 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(201,168,76,0.18);
+  border-radius: 10px;
+  color: #e8e0d0;
+  font-size: 0.82rem;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.poe-opt:hover:not(:disabled) {
+  background: rgba(201,168,76,0.12);
+  border-color: rgba(201,168,76,0.4);
+  color: #faf7f0; transform: translateX(4px);
+}
+.poe-opt:disabled { cursor: default; }
+.poe-opt.poe-opt-correct {
+  background: rgba(74,222,128,0.15);
+  border-color: #4ade80; color: #bbf7d0;
+}
+.poe-opt.poe-opt-wrong {
+  background: rgba(248,113,113,0.12);
+  border-color: #f87171; color: #fecaca;
+}
+.poe-trivia-result {
+  margin-top: 0.85rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.8rem; font-weight: 600;
+  position: relative;
+}
+.poe-trivia-result.correct {
+  background: rgba(74,222,128,0.12);
+  border: 1px solid rgba(74,222,128,0.3);
+  color: #86efac;
+}
+.poe-trivia-result.wrong {
+  background: rgba(248,113,113,0.1);
+  border: 1px solid rgba(248,113,113,0.25);
+  color: #fca5a5;
+}
+.poe-trivia-next {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  margin-top: 0.85rem;
+  padding: 0.5rem 1.1rem;
+  background: linear-gradient(135deg, #c9a84c, #a8883a);
+  color: #1a1510; border: none; border-radius: 20px;
+  font-size: 0.75rem; font-weight: 700;
+  font-family: 'DM Mono', monospace; letter-spacing: 0.06em;
+  cursor: pointer; transition: all 0.2s;
+  position: relative;
+}
+.poe-trivia-next:hover { background: linear-gradient(135deg, #e8c96a, #c9a84c); transform: translateY(-1px); }
+
+/* ── ACTIONS ──────────────────────────────────────────────── */
+.poe-actions {
+  display: flex; gap: 0.75rem; padding: 1.25rem 0 0;
+}
+.poe-btn-outline {
+  flex: 1; padding: 0.72rem;
+  border: 1px solid rgba(201,168,76,0.4); border-radius: 10px;
+  background: transparent; color: #a8883a;
+  font-size: 0.8rem; font-family: 'Inter', sans-serif; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+}
+.poe-btn-outline:hover { background: rgba(201,168,76,0.08); border-color: #c9a84c; }
+.poe-btn-close {
+  flex: 1; padding: 0.72rem;
+  background: linear-gradient(135deg, #c9a84c, #a8883a);
+  color: #1a1510; border: none; border-radius: 10px;
+  font-size: 0.8rem; font-family: 'Inter', sans-serif; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.poe-btn-close:hover { background: linear-gradient(135deg, #e8c96a, #c9a84c); transform: translateY(-1px); }
+
+/* ── MOBILE ───────────────────────────────────────────────── */
+@media (max-width: 540px) {
+  .poe-sheet { border-radius: 20px 20px 0 0; }
+  .poe-header { padding: 1.75rem 1.25rem 1.5rem; }
+  .poe-body { padding: 0 1rem 2rem; }
+  .poe-wait-mins { font-size: 1.8rem; }
+  .poe-trivia-q { font-size: 0.95rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   POST-ORDER EXPERIENCE  (poe-*)
+   Live Tracker · Countdown · Upsells · Trivia
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── OVERLAY ──────────────────────────────────────────────── */
+.poe-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: poeBackdropIn .3s ease both;
+}
+@keyframes poeBackdropIn { from{opacity:0} to{opacity:1} }
+
+/* ── SHEET ────────────────────────────────────────────────── */
+.poe-sheet {
+  width: 100%; max-width: 520px;
+  max-height: 93dvh;
+  background: var(--bg2);
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  animation: poeSheetUp .38s cubic-bezier(.22,.68,0,1.2) both;
+  box-shadow: 0 -8px 40px rgba(0,0,0,.6);
+}
+@keyframes poeSheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── HEADER ───────────────────────────────────────────────── */
+.poe-header {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #1c1a10 0%, #2a2510 100%);
+  border-bottom: 1px solid rgba(201,168,76,.2);
+  padding: 1.6rem 1.5rem 1.3rem;
+  text-align: center;
+  position: relative;
+}
+.poe-header::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.poe-check {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, #4a9e5c, #2d7a40);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto .85rem;
+  box-shadow: 0 0 0 8px rgba(74,158,92,.1), 0 4px 16px rgba(74,158,92,.3);
+  animation: poePop .5s cubic-bezier(.18,.89,.32,1.28) .1s both;
+}
+@keyframes poePop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.poe-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem; color: var(--cream);
+  margin-bottom: .3rem;
+}
+.poe-ref {
+  font-family: 'DM Mono', monospace;
+  font-size: .68rem; letter-spacing: .08em;
+  color: var(--gold);
+}
+
+/* ── BODY ─────────────────────────────────────────────────── */
+.poe-body {
+  flex: 1; overflow-y: auto;
+  padding: 1.25rem 1.25rem 1.5rem;
+  display: flex; flex-direction: column; gap: 1.1rem;
+}
+.poe-body::-webkit-scrollbar { width: 4px; }
+.poe-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── SECTION ──────────────────────────────────────────────── */
+.poe-section {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+.poe-section-title {
+  font-family: 'DM Mono', monospace;
+  font-size: .65rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: .85rem;
+  display: flex; align-items: center; gap: .4rem;
+}
+
+/* ── LIVE TRACKER ─────────────────────────────────────────── */
+.poe-tracker {
+  display: flex; align-items: center;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  padding: .4rem .2rem;
+  transition: background .6s;
+}
+.poe-step {
+  display: flex; flex-direction: column; align-items: center; gap: .3rem;
+  flex-shrink: 0;
+}
+.poe-step-dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--dim);
+  background: var(--bg4);
+  transition: all .4s cubic-bezier(.34,1.56,.64,1);
+  display: flex; align-items: center; justify-content: center;
+}
+.poe-step-lbl {
+  font-family: 'DM Mono', monospace;
+  font-size: .55rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--dim); text-align: center; max-width: 54px;
+  transition: color .3s;
+}
+.poe-step-line {
+  flex: 1; height: 2px;
+  background: var(--border);
+  margin: 0 .25rem;
+  position: relative; overflow: hidden;
+}
+.poe-step-line::after {
+  content: ''; position: absolute; inset: 0;
+  background: var(--gold);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .6s ease;
+}
+/* Active step */
+.poe-step.active .poe-step-dot {
+  border-color: var(--gold);
+  background: rgba(201,168,76,.15);
+  box-shadow: 0 0 0 4px rgba(201,168,76,.12), 0 0 12px rgba(201,168,76,.25);
+  animation: poePulse 2s ease-in-out infinite;
+}
+.poe-step.active .poe-step-lbl { color: var(--gold); font-weight: 600; }
+/* Done step */
+.poe-step.done .poe-step-dot {
+  border-color: var(--success);
+  background: rgba(74,158,92,.15);
+}
+.poe-step.done .poe-step-dot::after {
+  content: '✓'; font-size: .7rem; color: var(--success);
+}
+.poe-step.done .poe-step-lbl { color: var(--success); }
+.poe-step.done + .poe-step-line::after { transform: scaleX(1); }
+
+@keyframes poePulse {
+  0%,100% { box-shadow: 0 0 0 4px rgba(201,168,76,.12), 0 0 12px rgba(201,168,76,.2); }
+  50%      { box-shadow: 0 0 0 7px rgba(201,168,76,.06), 0 0 20px rgba(201,168,76,.35); }
+}
+
+/* ── WAIT TIMER ───────────────────────────────────────────── */
+.poe-wait-box {
+  display: flex; align-items: center; justify-content: center; gap: 1.25rem;
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: .85rem 1.25rem;
+}
+.poe-wait-label {
+  font-family: 'DM Mono', monospace;
+  font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: .25rem;
+}
+.poe-wait-mins {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem; font-weight: 700; color: var(--gold);
+  line-height: 1; letter-spacing: .04em;
+  transition: color .5s;
+}
+.poe-ring { width: 56px; height: 56px; flex-shrink: 0; transform: rotate(-90deg); }
+.poe-ring-bg  { fill: none; stroke: rgba(201,168,76,.1); stroke-width: 4; }
+.poe-ring-prog {
+  fill: none; stroke: var(--gold); stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke .5s;
+}
+
+/* Ready flash */
+.poe-ready-banner {
+  text-align: center; padding: .75rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem; color: #4ade80;
+  animation: poeReadyPulse 1s ease-in-out infinite alternate;
+}
+@keyframes poeReadyPulse {
+  from { opacity: .8; } to { opacity: 1; transform: scale(1.02); }
+}
+
+/* ── ORDER SUMMARY ────────────────────────────────────────── */
+.poe-order-list { display: flex; flex-direction: column; gap: 0; }
+.poe-order-row {
+  display: flex; align-items: baseline; gap: .5rem;
+  padding: .52rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .84rem;
+}
+.poe-order-row:last-of-type { border-bottom: none; }
+.poe-qty {
+  font-family: 'DM Mono', monospace;
+  font-size: .7rem; color: var(--gold);
+  min-width: 22px; flex-shrink: 0;
+}
+.poe-item-name { flex: 1; color: var(--text); }
+.poe-item-name em { color: var(--muted); font-style: normal; font-size: .78rem; }
+.poe-item-price {
+  font-family: 'DM Mono', monospace;
+  font-size: .75rem; color: var(--muted);
+  white-space: nowrap;
+}
+.poe-total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .65rem 0 0;
+  border-top: 1px solid var(--border2);
+  margin-top: .3rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem; color: var(--gold); font-weight: 700;
+}
+
+/* ── UPSELLS ──────────────────────────────────────────────── */
+.poe-upsells { display: flex; flex-direction: column; gap: .6rem; }
+.poe-upsell-card {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .6rem .75rem;
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: 10px; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.poe-upsell-card:hover { border-color: var(--gold-d); background: rgba(201,168,76,.04); }
+.poe-upsell-card.poe-upsell-added { opacity: .6; pointer-events: none; }
+.poe-upsell-img {
+  width: 46px; height: 46px; border-radius: 8px;
+  object-fit: cover; flex-shrink: 0;
+  background: var(--surface);
+}
+.poe-upsell-emoji {
+  width: 46px; height: 46px; border-radius: 8px;
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; flex-shrink: 0;
+}
+.poe-upsell-body { flex: 1; min-width: 0; }
+.poe-upsell-name {
+  font-size: .85rem; color: var(--cream); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.poe-upsell-price {
+  font-family: 'DM Mono', monospace;
+  font-size: .68rem; color: var(--gold); margin-top: .12rem;
+}
+.poe-upsell-btn {
+  padding: .32rem .75rem;
+  background: rgba(201,168,76,.1);
+  border: 1px solid rgba(201,168,76,.3);
+  border-radius: 20px;
+  color: var(--gold);
+  font-size: .72rem; font-family: 'DM Mono', monospace;
+  cursor: pointer; white-space: nowrap;
+  transition: background .2s, transform .15s;
+  flex-shrink: 0;
+}
+.poe-upsell-btn:hover:not(:disabled) { background: rgba(201,168,76,.2); transform: scale(1.04); }
+.poe-upsell-btn:disabled { opacity: .5; cursor: default; }
+
+/* ── TRIVIA ───────────────────────────────────────────────── */
+.poe-trivia { display: flex; flex-direction: column; gap: .7rem; }
+.poe-trivia-score {
+  font-family: 'DM Mono', monospace;
+  font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); text-align: right;
+}
+.poe-trivia-q {
+  font-size: .95rem; color: var(--cream); line-height: 1.5;
+  font-weight: 500;
+}
+.poe-trivia-opts { display: flex; flex-direction: column; gap: .45rem; }
+.poe-opt {
+  width: 100%;
+  padding: .65rem .9rem;
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text); font-size: .84rem; text-align: left;
+  cursor: pointer; transition: all .15s;
+  font-family: 'Inter', sans-serif;
+}
+.poe-opt:hover:not(:disabled) {
+  border-color: var(--gold-d);
+  background: rgba(201,168,76,.06);
+  color: var(--cream);
+}
+.poe-opt:disabled { cursor: default; }
+.poe-opt.poe-opt-correct {
+  background: rgba(74,158,92,.12);
+  border-color: rgba(74,158,92,.4);
+  color: #7ec898; font-weight: 600;
+}
+.poe-opt.poe-opt-wrong {
+  background: rgba(201,64,64,.08);
+  border-color: rgba(201,64,64,.3);
+  color: #e09090;
+  text-decoration: line-through;
+}
+.poe-trivia-result {
+  font-size: .82rem; padding: .5rem .75rem;
+  border-radius: 7px; font-weight: 500; line-height: 1.4;
+}
+.poe-trivia-result.correct {
+  background: rgba(74,158,92,.1);
+  border: 1px solid rgba(74,158,92,.25);
+  color: #7ec898;
+}
+.poe-trivia-result.wrong {
+  background: rgba(201,64,64,.08);
+  border: 1px solid rgba(201,64,64,.2);
+  color: #e09090;
+}
+.poe-trivia-next {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .4rem .9rem;
+  background: rgba(201,168,76,.1);
+  border: 1px solid rgba(201,168,76,.3);
+  border-radius: 20px;
+  color: var(--gold); font-size: .75rem;
+  font-family: 'DM Mono', monospace; letter-spacing: .06em;
+  cursor: pointer; transition: background .2s;
+}
+.poe-trivia-next:hover { background: rgba(201,168,76,.2); }
+
+/* ── ACTIONS ──────────────────────────────────────────────── */
+.poe-actions {
+  display: flex; gap: .75rem;
+  padding: 0 0 .25rem;
+}
+.poe-btn-outline {
+  flex: 1; padding: .72rem;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  color: var(--muted); font-size: .82rem;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer; transition: all .2s;
+  display: flex; align-items: center; justify-content: center; gap: .45rem;
+}
+.poe-btn-outline:hover { border-color: var(--gold-d); color: var(--gold); }
+.poe-btn-close {
+  flex: 1; padding: .72rem;
+  background: var(--gold); color: #1a1510;
+  border: none; border-radius: 10px;
+  font-size: .85rem; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer; transition: background .2s, transform .15s;
+}
+.poe-btn-close:hover { background: var(--gold-l); transform: translateY(-1px); }
+
+/* ── RESPONSIVE ───────────────────────────────────────────── */
+@media (min-width: 520px) {
+  .poe-sheet { border-radius: 20px; margin: auto; }
+  .poe-overlay { align-items: center; }
+}
