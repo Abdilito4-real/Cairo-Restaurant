@@ -93,20 +93,42 @@ const Notifs = {
   async fire(title, body, tag='cairo-order') {
     if (!this.enabled) return;
     this.playDing();
-    // Try service worker notification first (works when tab is backgrounded)
+
+    const showDirect = () => {
+      if (Notification?.permission === 'granted') {
+        try {
+          new Notification(title, {
+            body, icon: '/icon-192.png', badge: '/icon-192.png', tag,
+            requireInteraction: true
+          });
+        } catch(_) {}
+      }
+    };
+
+    // Use SW registration directly — more reliable than .controller on mobile
+    try {
+      const reg = await navigator.serviceWorker?.ready;
+      if (reg?.showNotification) {
+        await reg.showNotification(title, {
+          body, icon: '/icon-192.png', badge: '/icon-192.png', tag,
+          requireInteraction: true,
+          vibrate: [200, 100, 200],
+          data: { url: '/admin.html' }
+        });
+        return;
+      }
+    } catch(_) {}
+
+    // Fallback: post message to controller if ready
     if (navigator.serviceWorker?.controller) {
       navigator.serviceWorker.controller.postMessage({
         type: 'SHOW_NOTIFICATION', title, body, tag
       });
       return;
     }
-    // Fallback: direct browser notification (tab must be open)
-    if (Notification?.permission === 'granted') {
-      new Notification(title, {
-        body, icon: '/icon-192.png', badge: '/icon-192.png', tag,
-        requireInteraction: true
-      });
-    }
+
+    // Last fallback: direct browser notification
+    showDirect();
   },
 
   async toggle() {
@@ -200,6 +222,12 @@ const Auth = {
 // ── ADMIN CORE ────────────────────────────────────────
 const Admin = {
   async init() {
+    // Welcome greeting
+    const hr = new Date().getHours();
+    const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+    set('welcomeGreeting', greeting + ' 👋');
+    set('welcomeDate', new Date().toLocaleDateString('en-NG',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+
     await this.loadAll();
     this.subscribeRealtime();
     state.refreshTimer = setInterval(()=>{
@@ -354,6 +382,9 @@ const Admin = {
     // sidebar badges
     this.updateBadge('ordersBadge', state.liveOrders.filter(o=>o.status==='pending').length);
     this.updateBadge('resBadge',    state.reservations.filter(r=>r.status==='pending').length);
+    // sync mobile nav badges
+    this.updateBadge('mobileOrdersBadge', state.liveOrders.filter(o=>o.status==='pending').length);
+    this.updateBadge('mobileResBadge',    state.reservations.filter(r=>r.status==='pending').length);
 
     // live count chips
     const cnt = state.liveOrders.length;
@@ -398,9 +429,12 @@ const Admin = {
   renderTab(tab) {
     state.currentTab=tab;
     document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+    document.querySelectorAll('.mobile-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`tab-${tab}`));
     const titles={overview:'Overview',analytics:'Analytics',orders:'Orders',reservations:'Reservations',menu:'Menu Items',categories:'Categories',gallery:'Gallery'};
     set('pageTitle', titles[tab]||tab);
+    // scroll main to top on tab switch
+    document.querySelector('.main')?.scrollTo({top:0,behavior:'smooth'});
     if (tab==='overview')     { this.renderLiveOrders('liveOrdersGrid'); this.renderActivity(); this.renderTodayRes(); }
     if (tab==='analytics')    { this.renderAnalytics(); }
     if (tab==='orders')       { this.renderLiveOrders('liveOrdersGrid2'); this.renderHistory(); }
@@ -1255,10 +1289,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   ['loginEmail','loginPass'].forEach(id=>$(id)?.addEventListener('input',clearLoginError));
 
-  // nav
+  // nav — sidebar
   document.querySelectorAll('.nav-btn[data-tab]').forEach(btn=>
     btn.addEventListener('click',()=>Admin.renderTab(btn.dataset.tab))
   );
+
+  // nav — mobile bottom bar
+  document.querySelectorAll('.mobile-nav-item[data-tab]').forEach(btn=>
+    btn.addEventListener('click',()=>Admin.renderTab(btn.dataset.tab))
+  );
+
+  // live clock
+  function updateClock() {
+    const el = $('topbarClock'); if (!el) return;
+    el.textContent = new Date().toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
 
   // logout
   $('logoutBtn')?.addEventListener('click',()=>Auth.logout());
